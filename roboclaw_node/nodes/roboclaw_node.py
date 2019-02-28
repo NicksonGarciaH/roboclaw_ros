@@ -142,9 +142,9 @@ class Node:
         self.errorL_1 = 0
 	self.UiL_1 = 0
         self.UiR_1 = 0
-	self.Kp = 11.0
-        self.Ki = 30.25*0.1
-        self.Kd = 1.0/0.1
+	self.Kp = 7.0 #11.0
+        self.Ki = 2.0 #30.25*0.1 #=3.025
+        self.Kd = 3.0 #1.0/0.1   #=10
 	self.errorR_1 = 0
 	self.errorR_2 = 0
 	self.errorL_2 = 0
@@ -261,6 +261,9 @@ class Node:
     def encoders(self):	
         Enc1=roboclaw.ReadEncM1(self.address)
 	Enc2=roboclaw.ReadEncM2(self.address)
+
+	enc_R=float(-Enc2[1])
+	enc_L=float(Enc1[1])
         
 	speed1=roboclaw.ReadSpeedM1(self.address)
         speed1=float(speed1[1])
@@ -268,7 +271,7 @@ class Node:
 	speed2=roboclaw.ReadSpeedM2(self.address)
         speed2=float(speed2[1])
 
-	encoder = "ENC1:"+str(Enc1)+", ENC2:"+str(Enc2)       
+	encoder = "LEFT ENC: "+str(enc_L)+", RIGHT ENC: "+str(enc_R)       
 	self.encoder_pub.publish(encoder)	
         
         Wl=(0.0092*speed1)-0.1514  #RPM_R
@@ -310,8 +313,6 @@ class Node:
 	#self.UR_2 = self.UR_1
 	#self.UR_1 = UR
 	self.UiR_1 = Ui
-	#oub_1 = str(self.WR)+"\t"+str(Up)+"\t"+str(Ui)+"\t"+str(Ud)+"\t"+str(UR)+"\t"+str(self.UiR_1)+"\t"+str(self.errorR_1)
-	#self.pid_pub.publish(oub_1)
 	return UR
 
     def WL_Control(self):
@@ -331,8 +332,6 @@ class Node:
         #self.UL_2 = self.UL_1
         #self.UL_1 = UL
 	self.UiL_1 = Ui
-        oub_1 = str(self.ref_WL)+"\t"+str(self.WL)+"\t"+str(UL)
-        self.pid_pub.publish(oub_1)
         return UL
 
     def move(self, buttons, axes):
@@ -373,20 +372,22 @@ class Node:
 				self.encoders()
                     		UR=self.WR_Control()
 		    		UL=self.WL_Control()
+				pub_pid = "Left ref: "+str(self.ref_WL)+", Speed_L: "+str(self.WL)+", UL: "+str(UL)+",	Right ref: "+str(self.ref_WR)+", Speed_R: "+str(self.WR)+", UR: "+str(UR)
+			        self.pid_pub.publish(pub_pid)
 		    		#if abs(self.ref_WR)<0.1:
 		    		#	UR=0
 		    		#if abs(self.ref_WL)<0.1:
 		    		#	UL=0
 		    		roboclaw.ForwardBackwardM2(self.address, int(63-UR))
-		    		roboclaw.ForwardBackwardM1(self.address, int(63+UL))
+		    		roboclaw.ForwardBackwardM1(self.address, int(63+UL)) #Left
                 	except OSError as e:
                     		rospy.logerr("Could not stop")
                     		rospy.logdebug(e)
 		elif self.value==0:
                         
                         try:
-				
-                                roboclaw.ForwardBackwardM1(self.address, 63+self.last_UR)
+				self.encoders()
+                                roboclaw.ForwardBackwardM1(self.address, 63+self.last_UR) #Left
 		                roboclaw.ForwardBackwardM2(self.address, 63-self.last_UL)
                                 
                         except OSError as e:
