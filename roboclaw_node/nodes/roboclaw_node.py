@@ -171,9 +171,13 @@ class Node:
 	
 	######################################## TOPICS #############################################
 	self.encoder_pub = rospy.Publisher('/encoders', String, queue_size=10)
-	self.currents_pub = rospy.Publisher('/currents', String, queue_size=10)
-	self.voltage_pub = rospy.Publisher('/voltage', String, queue_size=10)
+	#self.currents_pub = rospy.Publisher('/currents', String, queue_size=10)
+	#self.voltage_pub = rospy.Publisher('/voltage', String, queue_size=10)
         self.speed_pub = rospy.Publisher('/speed', String, queue_size=10)
+	self.WL_pub = rospy.Publisher('/WL', String, queue_size=10)
+	self.WR_pub = rospy.Publisher('/WR', String, queue_size=10)
+	self.RefL_pub = rospy.Publisher('/RefL', String, queue_size=10)
+	self.RefR_pub = rospy.Publisher('/RefR', String, queue_size=10)	
 	self.pid_pub = rospy.Publisher('/pid', String, queue_size=10)
 	# TODO need someway to check if address is correct
         try:
@@ -204,8 +208,8 @@ class Node:
         roboclaw.ResetEncoders(self.address)
 
         self.MAX_SPEED = float(rospy.get_param("~max_speed", "2.0"))
-        self.TICKS_PER_METER = float(rospy.get_param("~tick_per_meter", "14250"))
-        self.BASE_WIDTH = float(rospy.get_param("~base_width", "0.315"))
+        self.TICKS_PER_METER = float(rospy.get_param("~tick_per_meter", "14853.7362"))
+        self.BASE_WIDTH = float(rospy.get_param("~base_width", "0.38"))
 
         self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
         self.last_set_speed_time = rospy.get_rostime()
@@ -262,8 +266,11 @@ class Node:
         Enc1=roboclaw.ReadEncM1(self.address)
 	Enc2=roboclaw.ReadEncM2(self.address)
 
-	enc_R=float(-Enc2[1])
-	enc_L=float(Enc1[1])
+	#enc_R=float(-Enc2[1])
+	#enc_L=float(Enc1[1])
+
+	enc_L=float(Enc2[1])
+        enc_R=float(Enc1[1])
         
 	speed1=roboclaw.ReadSpeedM1(self.address)
         speed1=float(speed1[1])
@@ -274,26 +281,33 @@ class Node:
 	encoder = "LEFT ENC: "+str(enc_L)+", RIGHT ENC: "+str(enc_R)       
 	self.encoder_pub.publish(encoder)	
         
-        Wl=(0.0092*speed1)-0.1514  #RPM_R
-	Wr=(0.0092*speed2)+0.0126  #RPM_L
-	self.WR=((2*pi)/60)*(-Wr)  #rad/s R
+        Wr=(0.0092*speed1)-0.1514  #RPM_R
+	Wl=(0.0092*speed2)+0.0126  #RPM_L
+	self.WR=((2*pi)/60)*Wr     #rad/s R
 	self.WL=((2*pi)/60)*Wl     #rad/s L
-	speedM= "Speed_L: "+str(self.WL)+",	Speed_R: "+str(self.WR)+" [rad/s]"
-	self.speed_pub.publish(speedM)
+	#speedM= "Speed_L: "+str(self.WL)+",	Speed_R: "+str(self.WR)+" [rad/s]"
+	WL= str(self.WL)
+	WR=str(self.WR)
+	RefL=str(self.ref_WL)
+	RefR=str(self.ref_WR)
+	#self.speed_pub.publish(speedM)
+	self.WL_pub.publish(WL)
+	self.WR_pub.publish(WR)
+	self.RefL_pub.publish(RefL)
+	self.RefR_pub.publish(RefR)
+	#i = roboclaw.ReadCurrents(self.address)
+        #i_L = roboclaw.ReadCurrents(self.address)[1]
+        #i_R = roboclaw.ReadCurrents(self.address)[2]
 
-	i = roboclaw.ReadCurrents(self.address)
-        i_L = roboclaw.ReadCurrents(self.address)[1]
-        i_R = roboclaw.ReadCurrents(self.address)[2]
+        #i_L = 10*float(i_L)
+        #i_R = 10*float(i_R)
 
-        i_L = 10*float(i_L)
-        i_R = 10*float(i_R)
+        #currents = "Current_L: "+str(i_L)+",	Current_R: "+str(i_R)+" [mA]"
+        #self.currents_pub.publish(currents)
 
-        currents = "Current_L: "+str(i_L)+",	Current_R: "+str(i_R)+" [mA]"
-        self.currents_pub.publish(currents)
-
-	volts = float(roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10.0)
-	volt = "Main voltage RBW: "+str(volts)+" [V]"
-	self.voltage_pub.publish(volt)
+	#volts = float(roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10.0)
+	#volt = "Main voltage RBW: "+str(volts)+" [V]"
+	#self.voltage_pub.publish(volt)
 	       
 
     def WR_Control(self):
@@ -413,11 +427,11 @@ class Node:
                 rospy.logwarn("ReadEncM2 OSError: %d", e.errno)
                 rospy.logdebug(e)
 
-            if ('enc1' in vars()) and ('enc2' in vars()):
-                rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
-                self.encodm.update_publish(enc1, enc2)
+            #if ('enc1' in vars()) and ('enc2' in vars()):
+                #rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
+                #self.encodm.update_publish(enc1, enc2)
 
-                self.updater.update()
+                #self.updater.update()
             r_time.sleep()
 
     def cmd_vel_callback(self, twist):
